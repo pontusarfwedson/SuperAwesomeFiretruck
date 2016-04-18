@@ -26,6 +26,9 @@
 
 
 void setup() {
+  
+  Serial.begin (9600);
+  
   // MOTOR SETUP! LEFT = A, RIGHT = B.
   pinMode(motorL, OUTPUT); //Initiates Motor Channel A pin
   pinMode(brakeL, OUTPUT); //Initiates Brake Channel A pin
@@ -44,11 +47,34 @@ void setup() {
 }
 
 void loop() {
-  Serial.begin (9600);
-  while(checkDist('L') > 10 && checkDist('F') > 10 && checkDist('R') > 10){
-   // forward(255);
+  int spd = speed(45);
+  int dist = 20;
+  while(checkDist('L') > dist && checkDist('F') > dist && checkDist('R') > dist){
+   forward(spd);
   }
-  fullBreak();
+
+  if(checkDist('L') < dist && checkDist('F') < dist && checkDist('R') < dist){
+   backward(spd);
+   delay(3000);
+  }
+  
+   while(checkDist('L') <= dist){
+      turnRightCont(spd);
+   }
+   
+   while(checkDist('F') <= dist){
+      if(checkDist('L') > checkDist('R')){
+        turnLeftCont(spd);
+    }else{
+        turnRightCont(spd);
+    }
+  }
+  
+  while(checkDist('R') <= dist){
+      turnLeftCont(spd);
+  }
+
+  
 
 
 }
@@ -101,7 +127,6 @@ long checkDist(char dir){
   String printNew = print + ": " + distance;
   Serial.print(printNew);
   Serial.print("\n");
-  delay(100);
   return distance;
 }
 
@@ -113,11 +138,22 @@ long checkDist(char dir){
 int speed(int speed){
   return (int) 2.55*speed;
 }
+
+void turnLeftCont(int speed){
+  runMotor('R', speed,1);
+  runMotor('L', speed,1);
+}
 void turnLeft(int angle, int speed){
   runMotor('R', speed,1);
   runMotor('L', speed,1);
   delay(factor*angle);
   fullBreak();
+}
+
+void turnRightCont(int speed){
+  runMotor('L', speed,-1);
+  runMotor('R', speed,-1);
+  
 }
 
 void turnRight(int angle, int speed){
@@ -153,6 +189,7 @@ void backward(int speed){
 }
 
 void runMotor(char channel,int speed, int direction){
+  double motorFactor = 1.15;
   switch(channel){
     case 'L':
             if(direction==1){
@@ -166,14 +203,15 @@ void runMotor(char channel,int speed, int direction){
             }
             break;
     case 'R':
+            int spd = (int) (motorFactor*speed);
             if(direction==1){
                digitalWrite(motorR, HIGH); //Establishes forward direction of Channel B
                digitalWrite(brakeR, LOW);   //Disengage the Brake for Channel B
-               analogWrite(speedR, speed);   //Spins the motor on Channel B at full speed 
+               analogWrite(speedR, spd);   //Spins the motor on Channel B at full speed 
             }else{
               digitalWrite(motorR, LOW);  //Establishes backward direction of Channel B
               digitalWrite(brakeR, LOW);   //Disengage the Brake for Channel B
-              analogWrite(speedR, speed);    //Spins the motor on Channel B at half speed
+              analogWrite(speedR, spd);    //Spins the motor on Channel B at half speed
             }
             break;
   }
