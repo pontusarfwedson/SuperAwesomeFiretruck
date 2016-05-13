@@ -30,19 +30,20 @@
  #define flameM A12
  #define flameMR A11
  int digitalPin = 52;
- int sirenPin = 22;
+ int sirenPin = 22; 
+ int pumpPin = 23;
 
  // DEFINE SETTINGS
  int factor = 5; //NEEDS TO BE TESTED (so that the car turns as many angles as given in the turnLeft, turnRight function)
- int distantFire1 = 1000;
- int distantFire2 = 1000;
- int distantFire3 = 500;
- int distantFire4 = 950;
- int closeFire = 300;
- int foundFire = 20;
+ int distantFire1 = 900;
+ int distantFire2 = 900;
+ int distantFire3 = 22;
+ int distantFire4 = 900;
+ int closeFire = 18;
+ int foundFire = 15;
 
  // DEBUG SETTINGS
- int showFlameSensors = 1;
+ int showFlameSensors = 0;
  int showDistSensors = 0;
  int debugPin = 53;
  
@@ -75,17 +76,21 @@ void setup() {
   pinMode(debugPin, OUTPUT);
   digitalWrite(debugPin, LOW);
 
+  // PUMP SETUP
+  pinMode(pumpPin, OUTPUT);
+  digitalWrite(pumpPin, LOW);
+
 
 }
 
 void loop() {
   
-  int spd = speed(45);
+  int spd = speed(40);
   int dist = 20;
   while(checkDist('L') > dist && checkDist('F') > dist && checkDist('R') > dist){
-   if(foundFlame()){
-    Serial.print("FLAME! \n");
-    extinguish();
+   int found = foundFlame();
+   if(found){
+    extinguish(found);
    }
    forward(spd);
   }
@@ -204,7 +209,7 @@ long checkDist(char dir){
   return sensorValue;
  }
 
- boolean foundFlame(){
+ int foundFlame(){
   int flame1 = flame(1);
   int flame2 = flame(2);
   int flame3 = flame(3);
@@ -223,23 +228,102 @@ long checkDist(char dir){
     Serial.print(flame5);
     Serial.print("] \n");
   }
-  boolean found =  flame1 < distantFire1 || flame2 < distantFire2 || flame3 < distantFire3 || flame4 < distantFire4 || flame5 == 0;
-  
-  return found;
+  boolean found1 = flame1 < distantFire1;
+  boolean found2 = flame2 < distantFire2;
+  boolean found3 = flame3 < distantFire3;
+  boolean found4 = flame4 < distantFire4;
+  boolean found5 = flame5 == 0;
+  if(found1){
+    Serial.println("\n");
+    Serial.println(flame1);
+    Serial.println(distantFire1);
+    Serial.println(flame1 < distantFire1);
+    Serial.println(found1);
+    Serial.println("1");
+    Serial.println("ETTAN");
+    Serial.println("\n");
+    return 1;
+  }
+  if(found2){
+  Serial.println(flame2);
+    Serial.println("2");
+    return 2;
+  }
+  if(found3){
+  Serial.println(flame3);
+    Serial.println("3");
+    return 3;
+  }
+  if(found4){
+  Serial.println(flame4);
+    Serial.println("4");
+    return 4;
+  }
+  if(found5){
+  Serial.println(flame5);
+    Serial.println("5");
+    return 5;
+  }
+  return 0;
   
  }
 
- void extinguish(){
+ void extinguish(int found){
+    Serial.println(found);
     fullBreak();
     activateSiren();
+    delay(2000);
+    locateFire(found);
+    deactivateSiren();
+    
  }
 
  void activateSiren(){
   digitalWrite(sirenPin, HIGH); 
   digitalWrite(debugPin, HIGH);
-  delay(2000);
+ }
+
+ void deactivateSiren(){
   digitalWrite(sirenPin, LOW); 
   digitalWrite(debugPin, LOW);
+ }
+
+ boolean locateFire(int found){
+ // Serial.print("locateFire: ");
+ // Serial.println(found);
+  if(found < 3){
+    //Serial.print("found < 3");
+    while(flame(3) > distantFire3){
+    //  Serial.println("left");
+      turnLeftSlow(speed(40), 0.5);
+    }
+  }else if(found > 3){
+   // Serial.print("found > 3");
+    while(flame(3) > distantFire3){
+    //  Serial.println("right");
+      turnRightSlow(speed(40), 0.5);
+    }
+  }
+  fullBreak();
+  delay(1000);
+  int i = 0;
+  while(flame(3) > closeFire && i < 500){
+   // Serial.println("forward");
+    forwardSlow(speed(40), 0.6);
+    delay(10);
+    i++;
+  }
+  deactivateSiren();
+  activatePump();
+  delay(4000);
+  
+  
+ }
+
+ void activatePump(){
+  digitalWrite(pumpPin, HIGH);
+  delay(500);
+  digitalWrite(pumpPin, LOW);
  }
 
 /************************************************
@@ -259,6 +343,30 @@ void turnLeft(int angle, int speed){
   runMotor('L', speed,1);
   delay(factor*angle);
   fullBreak();
+}
+
+void turnLeftSlow(int spd, float delFactor){
+  int factor = 300;
+  turnLeftCont(spd);
+  delay(factor - (int)(factor*delFactor));
+  fullBreak();
+  delay((int) (factor*delFactor));
+}
+
+void turnRightSlow(int spd, float delFactor){
+  int factor = 300;
+  turnRightCont(spd);
+  delay(factor - (int)(factor*delFactor));
+  fullBreak();
+  delay((int) (factor*delFactor));
+}
+
+void forwardSlow(int spd, float delFactor){
+  int factor = 300;
+  forward(spd);
+  delay(factor - (int)(factor*delFactor));
+  fullBreak();
+  delay((int) (factor*delFactor));
 }
 
 void turnRightCont(int speed){
